@@ -11,6 +11,7 @@ public class Duck : MonoBehaviour
         Wandering, Pursuing
     }
 
+    [SerializeField] private LayerMask _lineOfSightLayers;
     [SerializeField] private float _wanderTimeMax = 5.0f;
     [SerializeField] private float _obstacleCheckDistance = 1.0f;
     [SerializeField] private float _obstacleCheckRadius = 1.0f;
@@ -185,7 +186,7 @@ public class Duck : MonoBehaviour
         RaycastHit hitInfo;
         // fire a raycast pointing from the duck (_raycastStart) in the direction of the player (_raycastDir)
         // and only going as far as _lineOfSightMaxDistance
-        if(Physics.Raycast(_raycastStart, _raycastDir, out hitInfo, _lineOfSightMaxDistance))
+        if(Physics.Raycast(_raycastStart, _raycastDir, out hitInfo, _lineOfSightMaxDistance, _lineOfSightLayers.value))
         {
             _raycastHitLocation = hitInfo.point;
             // check if the object we hit was actually the player

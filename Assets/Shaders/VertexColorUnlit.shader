@@ -2,7 +2,9 @@ Shader "Custom/VertexColorUnlit"
 {
     Properties
     {
+        _Color("Color", Color) = (1,1,1,1)
     }
+
     SubShader
     {
         Tags { "RenderType"="Opaque" }
@@ -41,10 +43,12 @@ Shader "Custom/VertexColorUnlit"
                 return o;
             }
 
+            fixed4 _Color;
+
             fixed4 frag (v2f i) : SV_Target
             {
                 // apply vertex color
-                fixed4 col = i.color;
+                fixed4 col = i.color * _Color;
                 // apply fog
                 UNITY_APPLY_FOG(i.fogCoord, col);
                 return col;

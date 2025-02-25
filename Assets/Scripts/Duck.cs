@@ -8,7 +8,7 @@ public class Duck : MonoBehaviour
 {
     private enum DuckState 
     {
-        Wandering, WalkingToPlayer
+        Wandering, Pursuing
     }
 
     [SerializeField] private float _wanderTimeMax = 5.0f;
@@ -28,12 +28,16 @@ public class Duck : MonoBehaviour
     private float _wanderTime;
     private Vector3 _wanderDirection;
 
+    // our position + raycast offset, in world space
+    // _raycastStartOffset is used to make sure the raycast starts a little above the ground
+    // TransformPoint is used to take the offset from local to world space
     private Vector3 _raycastStart {
         get {
             return transform.TransformPoint(_raycastStartOffset);
         }
     } 
     
+    // a vector pointing from _raycastStart to the player's center
     private Vector3 _raycastDir {
         get {
             return (Player.Instance.PlayerCenter - _raycastStart).normalized;
@@ -44,7 +48,7 @@ public class Duck : MonoBehaviour
     private Vector3 _raycastHitLocation;
     private Vector3 _spherecastHitLocation;
     private bool _hasLineOfSightToPlayer;
-    private Vector3 _meToTargetPoint;
+    private Vector3 _meToPlayer;
 
     private void Update ()
     {
@@ -56,7 +60,7 @@ public class Duck : MonoBehaviour
     {
         if(HasLineOfSightToPlayer())
         {
-            _state = DuckState.WalkingToPlayer;
+            _state = DuckState.Pursuing;
         }
         else 
         {
@@ -64,12 +68,17 @@ public class Duck : MonoBehaviour
         }
     }
 
+    // suggested improvement: 
+    // this state machine is curretly overkill because there's only 2 states
+    // but if we were to want to implement state transitions,
+    // like maybe if the duck wanted to finish turning before it started walking in a new direction,
+    // then changing states would matter and this state machine would help with that!
     private void RunState ()
     {
         switch(_state) 
         {
             case DuckState.Wandering: RunWanderState(); break;
-            case DuckState.WalkingToPlayer: RunWalkingToPlayerState(); break;
+            case DuckState.Pursuing: RunPursueState(); break;
             default: Debug.LogError("unhandled state " + _state); break;
         }
     }
@@ -129,7 +138,7 @@ public class Duck : MonoBehaviour
         return hasObstacle;
     }
 
-    private void RunWalkingToPlayerState ()
+    private void RunPursueState ()
     {
         _renderer.material.color = Color.red;
 
@@ -139,9 +148,9 @@ public class Duck : MonoBehaviour
 
         // get vector pointing from duck to target point
         Vector3 me = new Vector3(transform.position.x, 0, transform.position.z);
-        _meToTargetPoint = (playerPos - me).normalized;
+        _meToPlayer = (playerPos - me).normalized;
 
-        RotateTowards(_meToTargetPoint);
+        RotateTowards(_meToPlayer);
         WalkTowards(playerPos);
     }
 
@@ -174,9 +183,12 @@ public class Duck : MonoBehaviour
     {
         _hasLineOfSightToPlayer = false;
         RaycastHit hitInfo;
+        // fire a raycast pointing from the duck (_raycastStart) in the direction of the player (_raycastDir)
+        // and only going as far as _lineOfSightMaxDistance
         if(Physics.Raycast(_raycastStart, _raycastDir, out hitInfo, _lineOfSightMaxDistance))
         {
             _raycastHitLocation = hitInfo.point;
+            // check if the object we hit was actually the player
             if(hitInfo.collider.gameObject.tag.Equals(_playerTag))
             {
                 _hasLineOfSightToPlayer = true;
@@ -206,20 +218,18 @@ public class Duck : MonoBehaviour
         {
             Gizmos.color = Color.yellow;
             Gizmos.DrawRay(transform.position, _wanderDirection);
-            Gizmos.DrawSphere(_spherecastHitLocation, 0.1f);
 
-            // also visualize spherecast to check for obstacles
+            // also visualize spherecast checking for obstacles
             Gizmos.DrawWireSphere(_raycastStart, _obstacleCheckRadius);
             Gizmos.DrawWireSphere(_raycastStart + _wanderDirection * _obstacleCheckDistance, _obstacleCheckRadius);
 
             // draw spherecast hit location
-            Gizmos.DrawWireSphere(_spherecastHitLocation, 0.1f);
+            Gizmos.DrawSphere(_spherecastHitLocation, 0.1f);
         }
-        else if(_state == DuckState.WalkingToPlayer)
+        else if(_state == DuckState.Pursuing)
         {
             Gizmos.color = Color.yellow;
-            Gizmos.DrawRay(transform.position, transform.forward);
-            Gizmos.DrawRay(transform.position, _meToTargetPoint);
+            Gizmos.DrawRay(transform.position, _meToPlayer);
         }
     }
 }
